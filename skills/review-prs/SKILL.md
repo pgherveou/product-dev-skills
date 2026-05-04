@@ -192,7 +192,7 @@ For each serial chain, in order:
 ## Important Rules
 
 - **Never merge two PRs in a serial chain without waiting for CI between them.** The second PR must rebase onto the merged main.
-- **Independent PRs can be reviewed and merged in parallel** — use parallel agents for the review step, but still wait for CI before merging each. Use `gh pr merge --squash --admin` only after all CI checks pass.
+- **Independent PRs can be reviewed and merged in parallel** — use parallel agents for the review step, but still wait for CI before merging each. Use `gh pr merge $MERGE_FLAGS` (from `product-dev-skills.pr-merge-flags`) only after all CI checks pass.
 - **Close superseded PRs proactively** — don't waste time reviewing dead code.
 - **Fetch main after every merge** — the next PR must rebase onto the latest main.
 - **If a CI failure affects downstream PRs in a serial chain, stop the chain.** Fix the failure before continuing.
