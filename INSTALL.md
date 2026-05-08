@@ -57,6 +57,12 @@ git config --global product-dev-skills.pr-merge-flags "--squash --admin"
 # auto-merge after CI passes.
 git config --global product-dev-skills.auto-merge true
 
+# Disable automatic fixes in /review-pr. Default is true: the pipeline
+# fixes findings, runs local checks, and pushes commits to the PR
+# branch. Set to false to stop after presenting findings, leaving the
+# PR untouched so you can apply fixes yourself.
+git config --global product-dev-skills.auto-fix false
+
 # Paths to scan during /cleanup. Repeat with --add for multiple paths.
 git config --global --add product-dev-skills.cleanup-paths "$HOME/dev/github/paritytech/host-sdk/target"
 git config --global --add product-dev-skills.cleanup-paths "$HOME/dev/github/paritytech/host-sdk/.claude/worktrees"
