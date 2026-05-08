@@ -12,6 +12,7 @@ disable-model-invocation: false
 Read these from git config (`git config --get product-dev-skills.<key>`):
 - `$AUTHOR` from `github-author` (required) — author whose PRs get the full review-fix-merge pipeline
 - `$MERGE_FLAGS` from `pr-merge-flags` (required) — flags passed to `gh pr merge` (e.g. `--squash --admin` or `--squash`)
+- `$AUTO_MERGE` from `auto-merge` (optional, default `false`) — when `true`, the pipeline runs `gh pr merge` after CI is green. When `false` (the default), the pipeline stops after pushing fixes and verifying CI; it never runs `gh pr merge`. Read with `git config --get --type=bool product-dev-skills.auto-merge` and treat any value other than `true` (including unset) as `false`.
 
 If any required value is unset, stop and tell the user which `git config` command(s) to run.
 
@@ -142,11 +143,14 @@ Only after Steps 4, 5, and 6 are clean:
 
 1. Prefer `ek-pr checks $ARGUMENTS` for CI polling/status checks. Fall back to `gh pr checks $ARGUMENTS` only if the helper is unavailable.
 2. If a check fails: enter a new worktree, diagnose, fix, push again, and restart from Step 8.
-3. **Only after all CI checks pass**: `gh pr merge $ARGUMENTS $MERGE_FLAGS`
-4. Confirm merge: `gh pr view $ARGUMENTS --json state -q .state`
-5. `ExitWorktree` with action `remove`
+3. **If `$AUTO_MERGE` is `false`**: stop here once all CI checks are green. Do NOT run `gh pr merge`. Report to the user that the PR is ready for manual merge, then `ExitWorktree` with action `remove` and skip steps 4–5.
+4. **Only after all CI checks pass** (and `$AUTO_MERGE` is not `false`): `gh pr merge $ARGUMENTS $MERGE_FLAGS`
+5. Confirm merge: `gh pr view $ARGUMENTS --json state -q .state`
+6. `ExitWorktree` with action `remove`
 
 **CRITICAL: Never merge before CI checks pass.** If `$MERGE_FLAGS` includes `--admin`, that bypasses branch protection rules (e.g., required reviews) but does NOT replace CI verification. Always wait for all checks to be green first.
+
+**CRITICAL: Respect `$AUTO_MERGE=false`.** When auto-merge is disabled, never invoke `gh pr merge`, never enable GitHub auto-merge, and never bypass this gate. The user merges manually.
 
 ---
 
