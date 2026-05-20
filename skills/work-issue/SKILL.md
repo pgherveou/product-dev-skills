@@ -118,6 +118,28 @@ Before implementing, output a concise plan summary:
    - TypeScript checks if TS packages changed
 5. If checks fail, fix before proceeding.
 
+## Step 3b: Simplify Pass
+
+Before review, invoke the `/simplify` skill on the implementation diff to catch verbosity, premature abstraction, and unnecessary complexity.
+
+Then re-read the diff and apply the **Simplicity Rules**:
+
+- **No abstractions for single-use code.** A helper used in one place is just code with extra indirection.
+- **No "flexibility" or "configurability" that wasn't requested.** Options, hooks, and config knobs only exist if the issue asks for them.
+- **No error handling for impossible scenarios.** Trust internal invariants. Only validate at system boundaries.
+- **If you wrote 200 lines and it could be 50, rewrite it.** Length is not virtue.
+- **"Would a senior engineer say this is overcomplicated?"** If yes, simplify before moving on.
+
+**Duplication Check (mandatory before adding any helper):**
+
+1. Before adding a helper function, type, or utility, `grep` the codebase for similar names, signatures, or behavior. Examples: if adding `parseFooId`, search for `parse*Id`, `from*String`, similar regexes, etc.
+2. If a similar helper already exists, **reuse it** instead of adding a new one.
+3. If a suitable helper exists in a third-party dependency (already in `Cargo.toml` / `package.json`), use it.
+4. If the helper would be cleanly provided by a **new** dependency, stop and ask the user before adding the dependency. Do not silently introduce new dependencies.
+5. If two near-identical helpers now exist, either delete the new one and reuse the existing, or refactor both callers to share a single implementation. Do not leave parallel copies behind.
+
+If the simplify pass produces changes, re-run the local checks from Step 3 before continuing.
+
 ## Step 4: Review — Tester + Reviewer
 
 Launch **two agents in parallel**:
@@ -207,15 +229,26 @@ Run ALL relevant checks based on what files changed:
    ```
    gh pr create --title "<concise title>" --body "$(cat <<'EOF'
    ## Summary
-   <what changed and why>
+   <2-4 sentences: the big picture of what changed and why>
 
    ## Changes
-   - <bullet points>
+   - <one bullet per meaningful change, big picture only>
 
    Closes #$ARGUMENTS
+
+   ---
+   _Authored with assistance from Claude Code._
    EOF
    )"
    ```
+
+   **PR summary style:**
+   - Write for an engineer already familiar with the project. Skip background, glossary, and onboarding context.
+   - Give the big picture: what changed at the level a reviewer needs to orient themselves, not a line-by-line walkthrough. The diff is the source of truth for details.
+   - Keep it short. Aim for a Summary that fits on screen without scrolling. If you wrote more than ~10 lines of prose, cut it.
+   - No restating the issue, no "as discussed", no implementation play-by-play, no listing every file touched.
+   - Bullets in **Changes** are big-picture deltas (e.g. "switch nonce type to chain-specific"), not commit-message-level minutiae.
+
    **IMPORTANT:** Only use `Closes #$ARGUMENTS` if the PR fully satisfies all acceptance criteria from the issue. If the PR is partial or "directionally right" but incomplete, use `Relates to #$ARGUMENTS` instead and leave the issue open.
 5. Comment on the issue with a link to the PR: prefer `ek issue-comment $ARGUMENTS "PR opened: <pr-url>"`; fall back to `gh issue comment $ARGUMENTS --body "PR opened: <pr-url>"`
 6. `ExitWorktree`
@@ -250,4 +283,4 @@ Before considering this done, verify against the issue's acceptance criteria:
 - **Follow AGENTS.md conventions** — worktrees, commit messages, code style, security rules.
 - **Update CHANGELOG.md** under `[Unreleased]` for any user-facing change.
 - **Just file PRs — no commentary.** Open the PR, report the link, move on. Do not add caveats, notes about what consumers need to do, or seek implicit approval. The user reviews PRs separately.
-- **Never mention AI tools in attribution.** Do not mention AI, assistants, automation, or generated-by wording in PR titles, PR bodies, commit messages, issue comments, reviews, or any other user-facing attribution text.
+- **Disclose AI assistance.** Append an explicit AI-assisted line to PR bodies and substantive issue comments / review summaries on GitHub, e.g. `_Authored with assistance from Claude Code._`. The prose itself can read naturally; the disclosure line is the required signal. Commit messages stay clean (no AI footers) so git history remains terse.

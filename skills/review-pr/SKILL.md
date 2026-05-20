@@ -92,6 +92,25 @@ For every finding from Critical through Low:
    - Are test mocks/fixtures updated for the new code?
 3. If you find new issues: go back to Step 3. **Loop until the diff review is clean.**
 
+## Step 4b: Simplify Pass
+
+Invoke the `/simplify` skill on the current PR diff (including any fixes from Step 3) to catch verbosity, premature abstraction, and unnecessary complexity. Treat its output as additional findings and fold them into Step 3.
+
+Also apply the **Simplicity Rules** as part of the review checklist:
+
+- **No abstractions for single-use code.** Flag helpers, traits, and wrapper types that have one caller.
+- **No "flexibility" or "configurability" that wasn't requested.** Flag config knobs, options, and hooks that the linked issue didn't ask for.
+- **No error handling for impossible scenarios.** Flag defensive checks against states that internal invariants already prevent.
+- **If 200 lines could be 50, ask for a rewrite.** Flag obvious bloat.
+- **"Would a senior engineer say this is overcomplicated?"** If yes, it's a finding.
+
+**Duplication Check:**
+
+1. For every new helper, type, or utility introduced by the PR, `grep` the repo for similar names / signatures / behavior. If a similar one already exists, file a finding to reuse it.
+2. If a suitable helper exists in an already-declared dependency, file a finding to use it.
+3. If the new helper would be cleanly provided by a **new** third-party dependency, do not silently introduce it. File a finding asking whether to add the dependency, and surface that question to the user before pushing fixes.
+4. If two near-identical helpers now exist, the fix is to delete one and reuse the other, or refactor callers to share a single implementation.
+
 ## Step 5: Cross-File Consistency Checks
 
 Before running local checks, verify that changes are consistent across all locations where the same values or types appear:
@@ -171,6 +190,7 @@ For PRs authored by someone other than `$AUTHOR`, do NOT fix, push, or merge. In
    - For Critical/High/Medium issues: specific suggestions for what to fix
    - For cross-file consistency issues: list exactly which files need updating
    - A clear approve/request-changes verdict
+   - A trailing AI-disclosure line, e.g. `---\n_Reviewed with assistance from Claude Code._`
 3. If there are Critical or High findings, also run `gh pr review $ARGUMENTS --request-changes --body "..."` with a brief explanation.
 4. If the PR is clean (no Critical/High/Medium), run `gh pr review $ARGUMENTS --approve --body "LGTM"`.
 5. `ExitWorktree` with action `remove`.
@@ -232,4 +252,4 @@ Apply this checklist during Step 2. Any unchecked item is a finding.
 - **Watcher-driven/non-interactive review cycles must stay in a single worktree.** Do not create or rely on nested `.claude/worktrees/...` paths for reviewer or fixer agents. Review and fix directly in the current worktree.
 - **Avoid noisy fallback chains in watcher cycles.** Do not launch parallel shell attempts where one denied branch creates avoidable noise. Prefer a single `ek-pr` helper command first, then a single simple fallback only if the helper is unavailable or clearly failed.
 - **Avoid giant reads.** Start from `ek-pr diff-main-stat`, changed-file lists, and targeted per-file diffs or file reads. If a tool reports token limits, narrow the read immediately instead of retrying the full diff.
-- **Never mention AI tools in attribution.** Do not mention AI, assistants, automation, or generated-by wording in PR comments, PR reviews, commit messages, issue filings, or any other user-facing attribution text.
+- **Disclose AI assistance.** Append an explicit AI-assisted line to substantive user-facing text on GitHub (PR comments, PR review bodies, filed-issue bodies), e.g. `_Reviewed with assistance from Claude Code._`. The prose itself can read naturally; the disclosure line is the required signal. Commit messages stay clean (no AI footers) so git history remains terse.

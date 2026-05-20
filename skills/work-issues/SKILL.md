@@ -103,4 +103,4 @@ After all issues are processed (or limit reached), present a summary:
 - **Don't abandon an issue silently.** Every issue ends as completed, escalated, or skipped with a reason.
 - **Respect the user's time.** Batch escalation questions when possible rather than interrupting for each one.
 - **Clean up worktrees** after each issue.
-- **Never mention AI tools in attribution.** Do not mention AI, assistants, automation, or generated-by wording in PRs, issue comments, commit messages, summaries posted back to GitHub, or any other user-facing attribution text.
+- **Disclose AI assistance.** The underlying `/work-issue` skill appends an explicit AI-assisted line to PR bodies and substantive issue comments; do not strip it. The prose itself can read naturally; the disclosure line is the required signal. Commit messages stay clean (no AI footers) so git history remains terse.
