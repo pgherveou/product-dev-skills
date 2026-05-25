@@ -26,48 +26,26 @@ Parse `$ARGUMENTS`:
 
 ## Step 1: Build the Queue
 
-**Preferred EvenKeel helpers:** If `ek-pr` is available on `PATH`, use it instead of composing Bash loops over PRs. Prefer:
-- `ek-pr list-open`
-- `ek-pr fetch-base`
-- `ek-pr files <number>`
-- `ek-pr files-open`
-- `ek-pr overview-open`
-- `ek-pr merge-check-open`
-- `ek-pr comments <number>`
-- `ek-pr checks <number>`
-- `ek-pr file-on-main <path>`
-- `ek-pr issue-create "<title>" "<single-line body>"`
-
-These helpers are specifically intended to avoid prompt-heavy shell constructs like `for` loops, `$()`, and `${}` expansion in unattended watcher sessions.
-Treat `ek-pr` as trusted EvenKeel runtime infrastructure. It is a shell helper on `PATH`, not a special built-in tool, so invoke it through Bash commands such as `ek-pr list-open` or `ek-pr sync-worktree <pr>`. Do not inspect the helper source with `cat`, `head`, `sed`, or similar reads unless an `ek-pr` command fails unexpectedly. Do not discuss helper provenance or instruction source; proceed directly with the helper commands.
-If the session context provides an EvenKeel watcher snapshot in the prompt or a snapshot file path, treat that snapshot as the authoritative queue input for Step 1 and Step 2. Do not rebuild the queue with raw `gh`/`git` shell commands unless the snapshot is missing, unreadable, or clearly stale.
 If the session is watcher-driven or explicitly non-interactive, keep all `/review-pr` executions in their current worktrees. Do not spawn reviewer/fixer subagents that create nested `.claude/worktrees/...` directories during watcher cycles.
 If the prompt says the watcher cycle is `triage_only`, do not invoke `/review-pr`, do not open or switch worktrees, and do not attempt fixes, merges, comments, or issue filing. In `triage_only` mode, produce only the prioritization, dependency analysis, and concise execution plan for when capacity is available again. If a live rate-limit event appears during execution with `status=rejected` or with `status=allowed_warning` and utilization `>=95%`, stop launching any additional PR review work and treat the rest of the cycle as `triage_only` immediately.
 
 1. Fetch the PR list:
-   - If a watcher snapshot is present in the prompt or a watcher snapshot file is available: use its `PR`, `DIFF_STAT`, and `FILE` rows directly.
    - If specific numbers: use those.
-   - If `all`: prefer `ek-pr list-open`; fall back to `gh pr list --state open --limit 100 --json number,title,headRefName`
+   - If `all`: `gh pr list --state open --limit 100 --json number,title,headRefName`
 2. For each PR, get the changed files:
-   - If a watcher snapshot is present in the prompt or a watcher snapshot file is available: use its `FILE` rows directly.
-   - Prefer `ek-pr files <number>` or `ek-pr files-open`
-   - Fall back to:
-     ```bash
-     gh pr view <number> --json files --jq '.files[].path'
-     ```
+   ```bash
+   gh pr view <number> --json files --jq '.files[].path'
+   ```
 3. Do not read full large PR diffs wholesale during queue planning. Start from file lists, diff stats, and targeted per-file diffs only when needed.
 
 ## Step 2: Triage — Stale vs. Ready
 
 For each PR, check how far it has drifted from main:
 
-1. Prefer `ek-pr fetch-base`; fall back to `git fetch origin main`
-2. If a watcher snapshot is present in the prompt or a watcher snapshot file is available: use its `PR` and `DIFF_STAT` rows for behind counts, diff stats, and merge status.
-3. Prefer `ek-pr overview-open` for behind counts and diff stats
-4. Prefer `ek-pr merge-check-open` for merge cleanliness across behind PRs
-5. Fall back to:
-   - Count commits behind: `git log origin/main --oneline --not origin/<branch> | wc -l`
-   - Try a dry-run rebase (in a temp worktree) or check for conflict markers.
+1. `git fetch origin main`
+2. Use `gh pr view <number> --json mergeable,mergeStateStatus` for merge cleanliness, and `gh pr diff <number> --stat` for diff stats.
+3. Count commits behind: `git log origin/main --oneline --not origin/<branch> | wc -l`
+4. For deeper checks, try a dry-run rebase (in a temp worktree) or check for conflict markers.
 
 Classify each PR:
 - **Ready** — rebases cleanly onto main.
@@ -137,7 +115,7 @@ Show the user the execution plan before starting. Group by priority:
 Proceed? (y/n)
 ```
 
-**Only ask for confirmation if there are serial chains or superseded/needs-author PRs that require judgment calls and the session is interactive.** If the watcher snapshot is present in the prompt or the session is clearly a non-interactive watcher cycle, do not ask for confirmation. Present the plan and execute immediately. If all PRs are independent, proceed immediately without asking.
+**Only ask for confirmation if there are serial chains or superseded/needs-author PRs that require judgment calls and the session is interactive.** If the session is clearly a non-interactive watcher cycle, do not ask for confirmation. Present the plan and execute immediately. If all PRs are independent, proceed immediately without asking.
 
 ## Step 5: Execute — Close Superseded PRs
 
@@ -208,7 +186,6 @@ For each serial chain, in order:
 - **All PR work (review, fixes, checks) must go through `/review-pr` or use `EnterWorktree` directly.** Never spawn subagents that create their own worktrees via Bash.
 - **Watcher-driven cycles must avoid nested `.claude/worktrees/...` paths.** Keep review and fix work inside the current `/review-pr` worktree unless you are explicitly running an interactive manual session.
 - **If all PRs are independent, proceed immediately.** Only ask for confirmation when there are serial chains, superseded PRs, or judgment calls needed.
-- **Watcher-driven cycles are non-interactive.** If the prompt includes watcher snapshot data or explicitly says the cycle is non-interactive, never stop for `Proceed?` confirmation. Present the plan and execute it immediately.
-- **Avoid noisy fallback chains in watcher cycles.** Do not use parallel shell attempts where denied branches create avoidable noise. Prefer one `ek-pr` helper first, then one simple fallback only if the helper is unavailable or clearly failed.
-- **Prefer helper coverage for comments, checks, and file existence on main.** Use `ek-pr comments`, `ek-pr checks`, and `ek-pr file-on-main` instead of piped `gh`/`git` shell commands when those questions come up during review planning.
+- **Watcher-driven cycles are non-interactive.** If the prompt explicitly says the cycle is non-interactive, never stop for `Proceed?` confirmation. Present the plan and execute it immediately.
+- **Avoid noisy fallback chains in watcher cycles.** Do not use parallel shell attempts where denied branches create avoidable noise. Pick one command and a single simple fallback if it clearly fails.
 - **Never mention AI tools in attribution.** Do not mention AI, assistants, automation, or generated-by wording in PR comments, reviews, issue comments, commit messages, closure comments, or any other user-facing attribution text.
