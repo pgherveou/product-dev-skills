@@ -27,6 +27,8 @@ Then in any Claude Code session:
 /work-issues              # Batch through all open issues
 /review-pr 101            # Review, fix, and merge a PR
 /review-prs all           # Process all open PRs with smart scheduling
+/split-pr 101             # Split an oversized PR into a stack of smaller PRs
+/restack-pr 101           # Dispatch new integration-branch changes onto the stack
 /bastion                  # Get a ruthless code review
 /cleanup                  # Free disk space safely
 ```
@@ -41,6 +43,9 @@ See [INSTALL.md](INSTALL.md) for detailed setup and customization.
 | **work-issues** | Batch processor: loops through open issues, priority-sorted |
 | **review-pr** | Review, fix all issues, and merge a single PR |
 | **review-prs** | Multi-PR orchestrator with dependency analysis and parallel scheduling |
+| **split-pr** | Split an oversized PR into a `gh stack` of small, independently reviewable PRs |
+| **restack-pr** | Dispatch new changes from an integration branch onto an existing stack, with per-layer tests + CI gating |
+| **gh-stack** | Bundled gh-stack skill (vendored from `github/gh-stack`). Drives `gh stack` mechanics for split-pr / restack-pr |
 | **cleanup** | Safely remove stale worktrees and build caches |
 | **bastion** | Demanding senior engineer code review persona |
 | **wwbs** | "What Would Bastion Say?" -- alias for `/bastion` |
